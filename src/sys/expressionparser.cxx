@@ -183,7 +183,7 @@ FieldGeneratorPtr FieldBinary::clone(const list<FieldGeneratorPtr> args) {
 bool toBool(BoutReal rval) {
   int ival = ROUND(rval);
   if ((fabs(rval - static_cast<BoutReal>(ival)) > 1e-3) or (ival < 0) or (ival > 1)) {
-    throw BoutException(_("Boolean operator argument {:e} is not a bool"), rval);
+    throw BoutException(_f("Boolean operator argument {:e} is not a bool"), rval);
   }
   return ival == 1;
 }
@@ -302,7 +302,7 @@ ExpressionParser::fuzzyFind(const std::string& name,
 FieldGeneratorPtr ExpressionParser::parseIdentifierExpr(LexInfo& lex) const {
   // Make a nice error message if we couldn't find the identifier
   const auto generatorNotFoundErrorMessage = [&](const std::string& name) -> std::string {
-    const std::string message_template = _(
+    const auto message_template = _f(
         R"(Couldn't find generator '{}'. BOUT++ expressions are now case-sensitive, so you
 may need to change your input file.
 {})");
@@ -327,15 +327,13 @@ may need to change your input file.
 
     // No matches, just point out the error
     if (possible_matches.empty()) {
-      return fmt::format(fmt::runtime(message_template), name, problem_bit);
+      return fmt::format(message_template, name, problem_bit);
     }
 
     // Give the first suggestion as a possible alternative
-    std::string error_message =
-        fmt::format(fmt::runtime(message_template), name, problem_bit);
-    error_message +=
-        fmt::format(fmt::runtime(_("\n  {1: ^{2}}{0}\n  Did you mean '{0}'?")),
-                    possible_matches.begin()->name, "", start);
+    std::string error_message = fmt::format(message_template, name, problem_bit);
+    error_message += fmt::format(_f("\n  {1: ^{2}}{0}\n  Did you mean '{0}'?"),
+                                 possible_matches.begin()->name, "", start);
     return error_message;
   };
 

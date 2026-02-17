@@ -72,7 +72,7 @@ int SplitRK::init() {
   ASSERT0(ninternal_steps > 0);
 
   timestep = getOutputTimestep() / ninternal_steps;
-  output.write(_("\tUsing a timestep {:e}\n"), timestep);
+  output.write(_f("\tUsing a timestep {:e}\n"), timestep);
 
   return 0;
 }

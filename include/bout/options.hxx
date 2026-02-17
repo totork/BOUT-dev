@@ -192,7 +192,7 @@ public:
   /// @param[in] parent        Parent object
   /// @param[in] sectionName   Name of the section, including path from the root
   Options(Options* parent_instance, std::string full_name)
-      : parent_instance(parent_instance), full_name(std::move(full_name)){};
+      : parent_instance(parent_instance), full_name(std::move(full_name)) {};
 
   /// Initialise with a value
   /// These enable Options to be constructed using initializer lists
@@ -626,8 +626,8 @@ public:
       // Option not found. Copy the value from the default.
       this->_set_no_check(def.value, DEFAULT_SOURCE);
 
-      output_info << _("\tOption ") << full_name << " = " << def.full_name << " ("
-                  << DEFAULT_SOURCE << ")\n";
+      output_info.write("{}{} = {}({})\n", _("\tOption "), full_name, def.full_name,
+                        DEFAULT_SOURCE);
     } else {
       // Check if this was previously set as a default option
       if (bout::utils::variantEqualTo(attributes.at("source"), DEFAULT_SOURCE)) {
@@ -911,8 +911,8 @@ private:
                       << ")\n";
         } else {
           throw BoutException(
-              _("Options: Setting a value from same source ({:s}) to new value "
-                "'{:s}' - old value was '{:s}'."),
+              _f("Options: Setting a value from same source ({:s}) to new value "
+                 "'{:s}' - old value was '{:s}'."),
               source, toString(val), bout::utils::variantToString(value));
         }
       }
@@ -1043,7 +1043,42 @@ namespace details {
 /// so that we can put the function definitions in the .cxx file,
 /// avoiding lengthy recompilation if we change it
 struct OptionsFormatterBase {
-  auto parse(fmt::format_parse_context& ctx) -> fmt::format_parse_context::iterator;
+  constexpr auto parse(fmt::format_parse_context& ctx) {
+
+    const auto* closing_brace = std::find(ctx.begin(), ctx.end(), '}');
+    std::for_each(ctx.begin(), closing_brace, [&](auto ctx_opt) {
+      switch (ctx_opt) {
+      case 'd':
+        docstrings = true;
+        break;
+      case 'i':
+        inline_section_names = true;
+        break;
+      case 'k':
+        key_only = true;
+        break;
+      case 's':
+        source = true;
+        break;
+      case 'u':
+        unused = true;
+        break;
+      default:
+        throw fmt::format_error("invalid format for 'Options'");
+      }
+    });
+
+    // Keep a copy of the format string (without the last '}') so we can
+    // pass it down to the subsections.
+    const auto size = std::distance(ctx.begin(), closing_brace);
+    format_string.reserve(size + 3);
+    format_string.assign("{:");
+    format_string.append(ctx.begin(), closing_brace);
+    format_string.push_back('}');
+
+    return closing_brace;
+  }
+
   auto format(const Options& options, fmt::format_context& ctx) const
       -> fmt::format_context::iterator;
 
