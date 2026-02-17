@@ -192,7 +192,7 @@ public:
   /// @param[in] parent        Parent object
   /// @param[in] sectionName   Name of the section, including path from the root
   Options(Options* parent_instance, std::string full_name)
-      : parent_instance(parent_instance), full_name(std::move(full_name)) {};
+      : parent_instance(parent_instance), full_name(std::move(full_name)){};
 
   /// Initialise with a value
   /// These enable Options to be constructed using initializer lists
