@@ -226,6 +226,9 @@ public:
     setCoefEx(f);
   }
 
+  virtual FieldPerp forward(const FieldPerp& f);
+  virtual Field3D forward(const Field3D& f);
+  
   virtual void setCoefEz(const Field2D& val) = 0;
   virtual void setCoefEz(const Field3D& val) { setCoefEz(DC(val)); }
   virtual void setCoefEz(BoutReal r) {
