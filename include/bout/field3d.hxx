@@ -166,7 +166,7 @@ public:
    */
   Field3D(Mesh* localmesh = nullptr, CELL_LOC location_in = CELL_CENTRE,
           DirectionTypes directions_in = {YDirectionType::Standard,
-                                          ZDirectionType::Standard});
+	    ZDirectionType::Standard},std::optional<size_t> regionID = {});
 
   /*!
    * Copy constructor
@@ -199,6 +199,36 @@ public:
    */
   bool isAllocated() const { return !data.empty(); }
 
+  /// Separate fields for yup and ydown, with memory allocated. Note:
+  /// After this the parallel slices will be allocated and unique, but
+  /// may contain uninitialised values.
+  void splitParallelSlicesAndAllocate();
+
+  /// Returns a shallow copy without parallel slices
+  Field3D withoutParallelSlices() const {
+    Field3D result{getMesh(), getLocation(), getDirections(), getRegionID()};
+    result.data = data;
+    return result;
+  }
+
+  /// get number of parallel slices
+  size_t numberParallelSlices() const {
+    // Do checks
+    hasParallelSlices();
+    return yup_fields.size();
+  }
+
+  /// Enable a special tracking mode for debugging
+  /// Save all changes that, are done to the field, to tracking
+  Field3D& enableTracking(const std::string& name, Options& tracking);
+
+  /// Disable tracking
+  Field3D& disableTracking() {
+    tracking = nullptr;
+    tracking_state = 0;
+    return *this;
+  }
+  
   /*!
    * Return a pointer to the time-derivative field
    *
@@ -312,12 +342,12 @@ public:
   const Region<Ind3D>& getRegion(const std::string& region_name) const;
   /// Use region provided by the default, and if none is set, use the provided one
   const Region<Ind3D>& getValidRegionWithDefault(const std::string& region_name) const;
-  void setRegion(const std::string& region_name);
-  void resetRegion() { regionID.reset(); };
-  void setRegion(size_t id) { regionID = id; };
-  void setRegion(std::optional<size_t> id) { regionID = id; };
-  std::optional<size_t> getRegionID() const { return regionID; };
-
+  void setRegion(const std::string& region_name) override;
+  void resetRegion() override;
+  void setRegion(size_t id) override;
+  void setRegion(std::optional<size_t> id) override;
+  std::optional<size_t> getRegionID() const override { return regionID; };
+  
   /// Return a Region<Ind2D> reference to use to iterate over the x- and
   /// y-indices of this field
   const Region<Ind2D>& getRegion2D(REGION region) const;
@@ -468,6 +498,13 @@ public:
 
   Field3D& calcParallelSlices();
 
+    Field3D& allowParallelSlices([[maybe_unused]] bool allow) {
+#if CHECK > 0
+    allowCalcParallelSlices = allow;
+#endif
+    return *this;
+  }
+  
   void applyBoundary(bool init = false) override;
   void applyBoundary(BoutReal t);
   void applyBoundary(const std::string& condition);
@@ -479,8 +516,11 @@ public:
   /// This uses 2nd order central differences to set the value
   /// on the boundary to the value on the boundary in field \p f3d.
   /// Note: does not just copy values in boundary region.
-  void setBoundaryTo(const Field3D& f3d);
+  void setBoundaryTo(const Field3D& f3d) { setBoundaryTo(f3d, true); }
+  void setBoundaryTo(const Field3D& f3d, bool copyParallelSlices);
 
+  using FieldData::applyParallelBoundary;
+  
   void applyParallelBoundary() override;
   void applyParallelBoundary(BoutReal t) override;
   void applyParallelBoundary(const std::string& condition) override;
@@ -491,6 +531,10 @@ public:
 
   friend void swap(Field3D& first, Field3D& second) noexcept;
 
+  Options* getTracking() { return tracking; };
+
+  bool allowCalcParallelSlices{true};
+  
   int size() const override { return nx * ny * nz; };
 
 private:
@@ -508,6 +552,16 @@ private:
 
   /// RegionID over which the field is valid
   std::optional<size_t> regionID;
+
+  
+
+  int tracking_state{0};
+  Options* tracking{nullptr};
+  std::string selfname;
+  template <class T>
+  Options* track(const T& change, std::string operation);
+  Options* track(const BoutReal& change, std::string operation);
+  
 };
 
 // Non-member overloaded operators
@@ -649,5 +703,15 @@ bool operator==(const Field3D& a, const Field3D& b);
 
 /// Output a string describing a Field3D to a stream
 std::ostream& operator<<(std::ostream& out, const Field3D& value);
+
+inline Field3D copy(const Field3D& f) {
+  Field3D result{f};
+  result.allocate();
+  for (size_t i = 0; i < result.numberParallelSlices(); ++i) {
+    result.yup(i).allocate();
+    result.ydown(i).allocate();
+  }
+  return result;
+}
 
 #endif /* BOUT_FIELD3D_H */
