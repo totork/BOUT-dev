@@ -58,7 +58,8 @@ public:
   FieldPerp(Mesh* fieldmesh = nullptr, CELL_LOC location_in = CELL_CENTRE,
             int yindex_in = -1,
             DirectionTypes directions_in = {YDirectionType::Standard,
-                                            ZDirectionType::Standard});
+	      ZDirectionType::Standard},
+	    std::optional<size_t> regionID = {});
 
   /*!
    * Copy constructor. After this the data
@@ -157,6 +158,29 @@ public:
     return *this;
   }
 
+    /// Dummy functions to match Field3D interface
+  bool hasParallelSlices() const { return true; }
+  void splitParallelSlices() const {}
+  void splitParallelSlicesAndAllocate() const {}
+  void calcParallelSlices() const {}
+  void clearParallelSlices() const {}
+  FieldPerp withoutParallelSlices() const { return *this; }
+  size_t numberParallelSlices() const { return 0; }
+
+  FieldPerp& yup(std::vector<FieldPerp>::size_type UNUSED(index) = 0) { return *this; }
+  const FieldPerp& yup(std::vector<FieldPerp>::size_type UNUSED(index) = 0) const {
+    return *this;
+  }
+
+  FieldPerp& ydown(std::vector<FieldPerp>::size_type UNUSED(index) = 0) { return *this; }
+  const FieldPerp& ydown(std::vector<FieldPerp>::size_type UNUSED(index) = 0) const {
+    return *this;
+  }
+
+  FieldPerp& ynext(int UNUSED(dir)) { return *this; }
+  const FieldPerp& ynext(int UNUSED(dir)) const { return *this; }
+
+  
   /*!
    * Ensure that data array is allocated and unique
    */
